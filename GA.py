@@ -2,22 +2,26 @@ import numpy as np
 from Constants import *
 class Population():
     def __init__(self, mutRate = 0.15, surRatio = 0.25):
+        self.innovations = []
         self.players = []
         self.genomes = []
         self.generation = 0
         self.mutationRate = mutRate
         self.surviveRatio = surRatio
         self.globalBestPlayer = None
-        self.bestPlayers = []
+        self.bestPlayers = []        
         
-    def CreateGeneration(self, gameEntities):
-        self.popSize = len(gameEntities)
-        self.generation += 1
-        self.genomes = []
+    def CreateGeneration(self, gameEntities = []):
         self.players = []
-        for i in range(self.popSize):
+        self.genomes = []
+
+        for i in range(len(gameEntities)):
             if gameEntities[i].aiControlled:
                 self.players.append(Player(gameEntities[i]))  
+
+        self.popSize = len(self.players)
+        self.generation += 1
+        
 
     def GeneticCycle(self):
         self.ComputeFitness()

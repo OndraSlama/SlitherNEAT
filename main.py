@@ -8,6 +8,15 @@ import pygame.math as gameMath
 import pickle
 import os.path
 
+
+from Genome import *
+from Population import *
+from Connection import *
+from Node import *
+from ConnectionHistory import Innovation
+
+population = Population()
+
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 50, 50)
@@ -30,6 +39,7 @@ menuScreen = True
 infoScreen = False
 startGameTime = 0
 lastInfo = 0
+debugTime = 0
 
 graphics = Graphics(windowWidth, windowHeight, pixelScale)
 game = Game()
@@ -43,11 +53,17 @@ fps = 0
 running = True
 while running: 
     # ----------------- EVENTS ------------------------
+
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False   
         if event.type == pygame.MOUSEBUTTONDOWN:
             pos = pygame.mouse.get_pos()
+            # population.genomes[0].AddConnection()
+            # population.genomes[0].AddNode()   
+            # population.genomes[0].Mutate(innovation)
+            # population.genomes[2] = population.genomes[0].Crossover(population.genomes[1])
 
             if len(game.snakes) != 0 and game.isHumanPlayer:
                 game.snakes[0].sprinting = True
@@ -65,16 +81,16 @@ while running:
                 if cameraOnSnake < -1: cameraOnSnake = len(game.snakes) - 1
                 if cameraOnSnake > len(game.snakes) - 1: cameraOnSnake = -1
 
-            if event.key == pygame.K_s and game.population.globalBestPlayer.gameEntity.brain is not None:  # saves best player to file      
+            if event.key == pygame.K_s and game.population.globalBestPlayer.brain is not None:  # saves best player to file      
                 bestPlayer = game.population.globalBestPlayer
-                filePath = "savedDeepBrains/1-" + str(numberOfBeams) + "-" + str(numberOfFoodSenses)
-                fileName = filePath + "/brain_fitness-" + str(round(bestPlayer.absoluteFitness)) + ".obj"
+                filePath = "savedNeatBrains/1-" + str(numberOfBeams) + "-" + str(numberOfFoodSenses)
+                fileName = filePath + "/brain_fitness-" + str(round(bestPlayer.fitness)) + ".obj"
                 if not os.path.exists(filePath):
                     os.makedirs(filePath)
                 with open(fileName, 'wb') as f:
-                    pickle.dump(bestPlayer.gameEntity.brain, f)
+                    pickle.dump(bestPlayer.brain, f)
                 with open(filePath + "/savedBrain.obj", 'wb') as f:
-                    pickle.dump(bestPlayer.gameEntity.brain, f)
+                    pickle.dump(bestPlayer.brain, f)
 
                 print("Best player saved")
             
@@ -133,6 +149,7 @@ while running:
                 pygame.display.update()
                 graphics.ShowText("Neuroevoluting Slither", 70, RED, windowWidth/2, windowHeight*0.5)
                 menuScreen = False
+                game.init()
                 if not game.isHumanPlayer:
                     game.killSnake(game.snakes[0])
                 startGameTime = pygame.time.get_ticks()
@@ -178,6 +195,7 @@ while running:
     # try:
     # ------------------- GAME LOGIC------------------------
     if not menuScreen:
+        # debugTime = pygame.time.get_ticks()
         for g in range(gameSpeed):        
             realTime = pygame.time.get_ticks() - startGameTime 
             if realTime > 2000:    
@@ -191,6 +209,7 @@ while running:
                 if len(game.snakes) != 0:
                     if cameraOnSnake >= len(game.snakes): cameraOnSnake = len(game.snakes)-1
                     cameraPosition = game.snakes[cameraOnSnake].position
+        # print(pygame.time.get_ticks() - debugTime)
         
     
 # ------------------- GRAPHICS------------------------
@@ -201,11 +220,14 @@ while running:
             else:
                 relativeZoom = zoom
 
-            graphics.DrawEverything(game, cameraPosition, relativeZoom, cameraOnSnake, gameSpeed)  
+            graphics.DrawEverything(game, cameraPosition, relativeZoom, cameraOnSnake)  
 
-            # if realTime - lastInfo > 250:
-            #     graphics.DrawInfo(game, cameraOnSnake)
-            #     lastInfo = realTime
+            if realTime - lastInfo > 250:
+                graphics.CreateInfo(game, cameraOnSnake, gameSpeed)
+                # for i in range(len(population.genomes)):
+                #     graphics.BlitGenom(population.genomes[i], i)
+                graphics.BlitGenom(game.snakes[cameraOnSnake].brain)
+                lastInfo = realTime
     
     # except Exception as e:
     #     print(e)    

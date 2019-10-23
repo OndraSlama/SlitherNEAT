@@ -3,12 +3,14 @@ import random
 import pygame.math as gameMath
 import math
 import NN
+import time
 
 class Snake:
     def __init__(self, game, x, y, brain):
         self.game = game
         self.aiControlled = True
         self.brain = brain
+        self.fitness = 0
 
         self.position = gameMath.Vector2(x,y)
         self.velocity = gameMath.Vector2(1, 0)
@@ -20,6 +22,7 @@ class Snake:
         self.newPartCost = 20
         self.body = []
         self.radius = 1
+        self.color = [255, 0, 0]
 
         self.lastEatCheck = 0
         self.lastEaten = game.time
@@ -47,9 +50,11 @@ class Snake:
             self.sensedSnakes.append(gameMath.Vector2(0,0))
 
     def Update(self):
-        # Get what snake can see
-        self.GetSensorData()
+        # start = time.time()  
 
+        # Get what snake can see
+        self.GetSensorData() # TODO: most demanding function - optimize!
+        
         # Controll (brain of the snake)
         rotateAngle = 0
         if self.aiControlled:
@@ -64,7 +69,7 @@ class Snake:
         else:
             self.SensorDataToInput()
             differenceAngle = self.velocity.angle_to(self.game.mousePosition - self.position)
-            rotateAngle = self.ClampAngle(differenceAngle)    
+            rotateAngle = self.ClampAngle(differenceAngle)               
 
         # Sprint behaviour
         if self.sprinting and self.length > 100:
@@ -90,9 +95,7 @@ class Snake:
 
         # Grow or shring the snake (based on current saturation)
         self.UpdateLength()
-
-
-        
+        # print(round((time.time() - start)*1000,3))         
 
     def Move(self, rotateAngle):   
         # Update velocity
@@ -182,7 +185,8 @@ class Snake:
                         continue
 
                     t = min(t1, t2)
-                    self.intersectionPoints[i] = P1 + t * V     
+                    self.intersectionPoints[i] = P1 + t * V    
+
 
         # chek for snakes with sense
         snakesClose = []
@@ -197,6 +201,7 @@ class Snake:
                 self.sensedSnakes[i] = gameMath.Vector2(self.position.x, self.position.y)
 
         # sense food
+        # start = time.time()  
         foodClose = []
         for region in self.game.world.regions:
             if region.isInRegion(self.position.x, self.position.y, self.senseLenght):
@@ -209,6 +214,7 @@ class Snake:
                 self.sensedFoodPos[i] = gameMath.Vector2(foodClose[i].position.x, foodClose[i].position.y)
             else:
                 self.sensedFoodPos[i] = gameMath.Vector2(self.position.x, self.position.y)
+        # print(round((time.time() - start)*1000,3))
 
     def SensorDataToInput(self):
         # input list: fist are normalized distances from beams: 0 - 1 (if cant see anything -> -1) then distances to best food with angles to them from current velocity vector
@@ -337,7 +343,9 @@ class Snake:
         if angle  < -180: angle += 360
         return max(min(turningAngle/self.game.fps/self.radius, angle), -turningAngle/self.game.fps/self.radius)
             
-
+    def CalculateFitness(self):
+        self.fitness = (self.length - snakeInitialLength) * self.traveled/10
+        return self.fitness
 
 # class Part:
 #     def __init__(self):

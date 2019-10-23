@@ -1,9 +1,12 @@
 from World import *
 from Snake import *
+from Population import *
+from Genome import *
 import random
 import NN
-import GA
 import pickle
+import time
+# import GA
 
 class Game:
     def __init__(self):
@@ -23,13 +26,14 @@ class Game:
         self.loadFromFile = loadFromFile
         self.training = training
         self.showBotView = showBotView
-        self.population = GA.Population(mutationRate, surviveRatio)
-
+        self.population = Population()
+    
+    def init(self):
         # Spawn snakes
         try:
             if self.loadFromFile:
                 brains = []
-                filePath = "savedDeepBrains/1-" + str(numberOfBeams) + "-" + str(numberOfFoodSenses)
+                filePath = "savedNeatBrains/1-" + str(numberOfBeams) + "-" + str(numberOfFoodSenses)
                 with open(filePath + "/savedBrain.obj", 'rb') as file_brain:
                     brain = pickle.load(file_brain)
                 if brain.size[0] != numberOfBeams + numberOfFoodSenses + numberOfSnakeSenses*2 + 1:
@@ -54,15 +58,19 @@ class Game:
         
 
     def Update(self, mousePos, fps):
+
+       
         self.mousePosition = mousePos
         self.fps = max(fps, 1)
         self.time += 1000/self.fps   
-        # print(self.time)    
-
+        #  
+        # start = time.time()  
         # Update snakes
         self.world.Update()
         for snake in self.snakes:
             snake.Update()
+        
+        # print(round((time.time() - start)*1000,3))
 
         # Check for collision
         if self.time - self.lastColisionCheck > 200: # check every X miliseconds
@@ -74,11 +82,13 @@ class Game:
         if self.training:
             if len(self.snakes) <= (noOfSnakesLimit + self.isHumanPlayer) or self.time - self.lastGAcycle > generationTimeLimit*1000:
                 self.lastGAcycle = self.time
-                self.population.GeneticCycle()
+                genomes = self.population.GeneticCycle()
                 del self.snakes[self.isHumanPlayer:] # delete previous snaked except the one who belongs to human player
-                self.SpawnSnakes(self.population.genomes)
-                self.population.CreateGeneration(self.snakes[self.isHumanPlayer:])
+                self.snakeHistory = [] # delete previous snaked except the one who belongs to human player
+                self.SpawnSnakes(genomes)
+                self.population.CreateGeneration(self.snakeHistory)
                 self.world.RespawnFood()
+
                 
     def SpawnSnakes(self, brains = None, firstSpawn = 0):
         # Create snakes
@@ -86,15 +96,19 @@ class Game:
             for region in random.sample(self.world.regions, numberOfSnakes + self.isHumanPlayer):
                 inNodes = numberOfBeams + numberOfFoodSenses +  numberOfSnakeSenses*2 + 1
                 outNodes = 2
-                firstHidden = round(inNodes/2)
-                secondHidden = round((firstHidden + outNodes)/2)
-                
-                brain = NN.NeuralNetwork(inNodes, [firstHidden, secondHidden], outNodes)
-                self.snakes.append(Snake(self, region.position[0] + region.position[2]/2, region.position[1] + region.position[3]/2, brain))
+                brain = Genome(inNodes, outNodes)
+                brain.FullyConnect(self.population.innovations)
+                tempSnake = Snake(self, region.position[0] + region.position[2]/2, region.position[1] + region.position[3]/2, brain)
+                self.snakes.append(tempSnake)
+                self.snakeHistory.append(tempSnake)
+            if self.isHumanPlayer:
+                self.snakeHistory.pop(0)
         else:
             i = 0
             for region in random.sample(self.world.regions, numberOfSnakes + firstSpawn):
-                self.snakes.append(Snake(self, region.position[0] + region.position[2]/2, region.position[1] + region.position[3]/2, brains[i]))
+                tempSnake = Snake(self, region.position[0] + region.position[2]/2, region.position[1] + region.position[3]/2, brains[i])
+                self.snakes.append(tempSnake)
+                self.snakeHistory.append(tempSnake)
                 i += 1
 
     def CheckForCollisions(self):
